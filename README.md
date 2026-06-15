@@ -81,3 +81,24 @@ if command failed make script executable
 chmod +x ./get-token.sh
 ```
 
+
+Using NodejsFunction (CDK bundling handles deps), so:
+```
+Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force cart-service-cdk\cdk.out -ErrorAction SilentlyContinue
+npm install
+npm run build
+cd ./cart-service-cdk
+cdk deploy
+
+```
+
+List log groups:
+```
+aws logs describe-log-groups --query "logGroups[].logGroupName"
+```
+
+
+```
+aws logs tail /aws/lambda/CartServiceCdkStack-NestLambdaD29428FD-CUStkpRjapwZ --follow
+```
