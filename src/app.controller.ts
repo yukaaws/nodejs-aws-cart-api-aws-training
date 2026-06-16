@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Body,
   HttpCode,
+  Inject,
 } from '@nestjs/common';
 import {
   LocalAuthGuard,
@@ -19,7 +20,9 @@ import { AppRequest } from './shared';
 
 @Controller()
 export class AppController {
-  constructor(private authService: AuthService) {}
+  constructor( @Inject(AuthService) private authService: AuthService) {
+    console.log('AuthService injected:', !!authService);
+  }
 
   @Get(['', 'ping'])
   healthCheck() {
@@ -33,6 +36,10 @@ export class AppController {
   @HttpCode(HttpStatus.CREATED)
   // TODO ADD validation
   register(@Body() body: User) {
+    if (!this.authService) {
+      throw new Error('AuthService not injected');
+    }
+
     return this.authService.register(body);
   }
 
@@ -40,7 +47,7 @@ export class AppController {
   @HttpCode(200)
   @Post('api/auth/login')
   async login(@Request() req: AppRequest) {
-    const token = this.authService.login(req.user, 'basic');
+    const token = this.authService.login(req.user!, 'basic');
 
     return token;
   }

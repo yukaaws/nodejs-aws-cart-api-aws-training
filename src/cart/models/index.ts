@@ -10,11 +10,13 @@ export type Product = {
   price: number;
 };
 
+// This is DTO
 export type CartItem = {
   product: Product;
   count: number;
 };
 
+// This is DTO
 export type Cart = {
   id: string;
   user_id: string;
