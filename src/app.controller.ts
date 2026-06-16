@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Body,
   HttpCode,
+  Inject,
 } from '@nestjs/common';
 import {
   LocalAuthGuard,
@@ -19,7 +20,7 @@ import { AppRequest } from './shared';
 
 @Controller()
 export class AppController {
-  constructor(private authService: AuthService) {
+  constructor( @Inject(AuthService) private authService: AuthService) {
     console.log('AuthService injected:', !!authService);
   }
 

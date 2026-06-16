@@ -1,11 +1,13 @@
-import 'reflect-metadata'
+// import 'reflect-metadata';
 import { Context, Handler } from 'aws-lambda';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import * as express from 'express';
+// import * as express from 'express';
+import express from 'express';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
-const serverlessExpress = require('@vendia/serverless-express');
+// const serverlessExpress = require('@vendia/serverless-express');
+import serverlessExpress from '@vendia/serverless-express';
 let server: Handler;
 
 async function bootstrap(): Promise<Handler> {

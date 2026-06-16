@@ -46,6 +46,14 @@ export class CartServiceCdkStack extends cdk.Stack {
       ],
     });
 
+    // MUST allow Lambda to access Secrets Manager
+    // Lambda → Secrets Manager (inside VPC)
+    // No NAT required 
+    vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
+      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+    });
+
+
     // 2. Security Groups
     const lambdaSG = new ec2.SecurityGroup(this, 'LambdaSG', { // outbound traffic
       vpc,
@@ -108,55 +116,90 @@ export class CartServiceCdkStack extends cdk.Stack {
     });
 
     // 4. Lambda (inside VPC)
-    const lambdaFunction = new lambdaNodejs.NodejsFunction(this, 'NestLambda', {
+
+    const lambdaFunction = new lambda.Function(this, 'NestLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
 
-      entry: path.resolve(__dirname, '../../dist/src/lambda.js'), // use built file
-      handler: 'handler',
+      handler: 'src/lambda.handler',
 
-      projectRoot: path.resolve(__dirname, '../../'),
+      code: lambda.Code.fromAsset(
+        path.resolve(__dirname, '../../dist')
+      ),
 
-      memorySize: 1024, // better for Nest cold start
+      memorySize: 1024,
       timeout: cdk.Duration.seconds(30),
-      vpc, // Associate the Lambda function with the VPC
-      // allowPublicSubnet: true, // that is bad
+
+      vpc,
       securityGroups: [lambdaSG],
+
       environment: {
         DB_SECRET_ARN: cartServiceDbCredentialsSecret.secretArn,
         DB_HOST: db.instanceEndpoint.hostname,
         DB_PORT: db.instanceEndpoint.port.toString(),
         DB_NAME: 'cartdb',
-        DB_USER: 'cart_service_admin_user',
-      },
-
-      bundling: {
-        // esbuild will NOT bundle these packages
-        // But they MUST exist in node_modules at runtime
-        // Lambda loads them using normal require()
-        // Where do those dependencies come from then?
-        // CDK does this:
-
-        // Uses your local node_modules
-        // Zips:
-
-        //  dist/**
-        //  node_modules/**
-
-
-        // Uploads to Lambda
-
-        // No internet needed at runtime
-        externalModules: [
-          // don't bundle optional Nest deps
-          'class-transformer',
-          'class-validator',
-          '@nestjs/microservices',
-          '@nestjs/websockets',
-        ],
-        minify: false, // critical for Nest DI
-        // minify: true, // smaller bundle
-      },
+        DB_USERNAME: 'cart_service_admin_user',
+      }
     });
+    // const lambdaFunction = new lambdaNodejs.NodejsFunction(this, 'NestLambda', {
+    //   runtime: lambda.Runtime.NODEJS_20_X,
+
+
+    //   // entry: path.resolve(__dirname, '../../dist/src/lambda.js'), // use built file
+    //   handler: 'handler',
+
+    //   projectRoot: path.resolve(__dirname, '../../'),
+    //   // entry: path.resolve(__dirname, '../../src/lambda.ts'),
+    //   entry: path.resolve(__dirname, '../../src/entry.ts'),
+
+    //   memorySize: 1024, // better for Nest cold start
+    //   timeout: cdk.Duration.seconds(30),
+    //   vpc, // Associate the Lambda function with the VPC
+    //   // allowPublicSubnet: true, // that is bad
+    //   securityGroups: [lambdaSG],
+    //   environment: {
+    //     DB_SECRET_ARN: cartServiceDbCredentialsSecret.secretArn,
+    //     DB_HOST: db.instanceEndpoint.hostname,
+    //     DB_PORT: db.instanceEndpoint.port.toString(),
+    //     DB_NAME: 'cartdb',
+    //     DB_USERNAME: 'cart_service_admin_user',
+    //   },
+
+    //   bundling: {
+    //     tsconfig: path.resolve(__dirname, '../../tsconfig.json'),
+    //     // esbuild will NOT bundle these packages
+    //     // But they MUST exist in node_modules at runtime
+    //     // Lambda loads them using normal require()
+    //     // Where do those dependencies come from then?
+    //     // CDK does this:
+
+    //     // Uses your local node_modules
+    //     // Zips:
+
+    //     //  dist/**
+    //     //  node_modules/**
+
+
+    //     // Uploads to Lambda
+
+    //     // No internet needed at runtime
+    //     externalModules: [
+    //       // don't bundle optional Nest deps
+    //       // 'pg',
+    //       // 'typeorm',
+    //       // 'reflect-metadata',
+    //       'expo-sqlite',
+    //       'class-transformer',
+    //       'class-validator',
+    //       '@nestjs/microservices',
+    //       '@nestjs/websockets',
+    //     ],
+    //     minify: false, // critical for Nest DI
+    //     sourceMap: true,
+    //     keepNames: true,
+    //     // banner: 'require("reflect-metadata");',
+    //     // minify: true, // smaller bundle
+    //   },
+    // });
 
     // 5. Allow Lambda to read DB credentials
     db.secret?.grantRead(lambdaFunction);
